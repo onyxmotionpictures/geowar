@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Geo War - Test Build</title>
+	<link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.19.4.css">
+</head>
+<body>
+	<h1>Geo War - Test Build</h1>
+	<p>This page is for testing the Geo War game build and joystick functionality.</p>
+	<div id="joystick"></div>
+	<!-- Canvas for the game | Last test ran: 20 passed 0 failed. -->
+	<canvas id="game" width="1879" height="975" tabindex="1"></canvas>
+	<div id="qunit"></div>
+	<div id="qunit-fixture">
+        <canvas id="game" width="1879" height="975" tabindex="1"></canvas>
+		<div id="joystick"></div>
+	</div>
+	<script src="https://code.jquery.com/qunit/qunit-2.19.4.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/nipplejs@0.10.0/dist/nipplejs.min.js"></script>
+	<!-- Game Code from build.html -->
+	<script>
+		// Game and joystick code goes here
+		let saveData = {}; // Declare saveData at the top level so it's accessible everywhere
+
+		const keys = {
+			'65': 1, // A
+			'68': 2, // D
+			'87': 4, // W
+			'83': 8, // S
+			'32': 16, // Space
+			'27': 32, // Escape
+		};
+		let keyMap = 0;
+		let coords = [0, 0, 0, 0];
+		const FW = window.innerWidth;
+		const FH = window.innerHeight;
+		const c = document.getElementById('game');
+		c.width = FW;
+		c.height = FH;
+		c.tabIndex = 1;
+		c.addEventListener('keydown', (e) => {
+			if (keys[String(e.keyCode)]) {
+				keyMap |= keys[String(e.keyCode)];
+			}
+		});
+		c.addEventListener('keyup', (e) => {
+			if (keys[String(e.keyCode)]) {
+				keyMap &= ~keys[String(e.keyCode)];
+			}
+		});
+		c.addEventListener('mousemove', (e) => {
+			coords[0] = e.clientX * FW / c.offsetWidth;
+			coords[1] = e.clientY * FH / c.offsetHeight;
+		});
+		c.addEventListener('touchmove', (e) => {
+			const touch = e.touches[0];
+			coords[0] = touch.clientX * FW / c.offsetWidth;
+			coords[1] = touch.clientY * FH / c.offsetHeight;
+			e.preventDefault();
+		});
+		c.addEventListener('touchstart', (e) => {
+			if (e.touches.length > 1) {
+				coords[3] = 1; // Multi-touch
+			} else {
+				coords[3] = 0; // Single touch
+			}
+			coords[2] = 1; // Touch active
+		});
+		c.addEventListener('touchend', (e) => {
+			coords[2] = 0; // Touch inactive
+		});
+		c.addEventListener('touchcancel', (e) => {
+			coords[2] = 0; // Touch cancelled
+		});
+		const ctx = c.getContext('2d');
+		ctx.imageSmoothingEnabled = false;
+		ctx.webkitImageSmoothingEnabled = false;
+		ctx.mozImageSmoothingEnabled = false;
+		ctx.oImageSmoothingEnabled = false;
+		ctx.msImageSmoothingEnabled = false;
+		ctx.fillStyle = '#050505';
+		ctx.fillRect(0, 0, FW, FH);
+		ctx.font = '12px Helvetica, Arial, sans-serif';
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.lineWidth = 2;
+		ctx.strokeStyle = '#FAFAFA';
+		ctx.fillStyle = '#FAFAFA';
+		ctx.clearRect(0, 0, FW, FH);
+		ctx.fillStyle = '#050505';
+		ctx.fillRect(0, 0, FW, FH);
+
+		// Example GeoWar class stub
+		/**
+		 * GeoWar game class.
+		 * Manages game state, rendering, and updates.
+		 */
+		class GeoWar {
+			/**
+			 * Constructs a new GeoWar instance.
+			 * Initializes state, context, and triggers.
+			 */
+			constructor() {
+				/**
+				 * @property {Object} state - The game state object.
+				 * @property {number} state.time - Current game time.
+				 * @property {number} state.score - Player's score.
+				 * @property {number} state.level - Current game level.
+				 * @property {Array} state.enemies - List of enemies.
+				 * @property {Array} state.projectiles - List of projectiles.
+				 * @property {Array} state.powerUps - List of power-ups.
+				 * @property {Array} state.viewPort - Viewport coordinates.
+				 * @property {AudioContext} state.audioCtx - Audio context for sound.
+				 * @property {Object} state.sequences - Game sequences.
+				 * @property {Object} state.triggers - Game triggers.
+				 * @property {Array} state.times - Trigger times.
+				 */
+				this.state = {
+					time: 0,
+					score: 0,
+					level: 1,
+					enemies: [],
+					projectiles: [],
+					powerUps: [],
+					viewPort: [0, 0],
+					audioCtx: new (window.AudioContext || window.webkitAudioContext)(),
+					sequences: {
+						sequence1: [],
+						sequence2: [],
+						sequence3: [],
+						sequence4: [],
+					},
+				};
+			}
+
+			/**
+			saveGame() {
+			  // Example: Save state to localStorage
+			  localStorage.setItem('geoWarSave', JSON.stringify(this.state));
+			}
+	  
+			/**
+			 * Updates the game state.
+			 */
+			update() {
+				// Game update logic goes here
+			}
+
+			/**
+			 * Renders the game.
+			 */
+			render() {
+				ctx.clearRect(0, 0, FW, FH);
+				ctx.fillStyle = '#050505';
+				ctx.fillRect(0, 0, FW, FH);
+
+				// Render projectiles
+				this.state.projectiles.forEach(p => {
+					ctx.fillStyle = p.color || '#FFF';
+					ctx.beginPath();
+					ctx.arc(p.x, p.y, p.radius, 0, 2 * Math.PI);
+					ctx.fill();
+				});
+
+				// Render enemies
+				this.state.enemies.forEach(e => {
+					ctx.strokeStyle = e.color || '#F00';
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.arc(e.x, e.y, e.radius, 0, 2 * Math.PI);
+					ctx.stroke();
+				});
+
+				// Render power-ups
+				this.state.powerUps.forEach(p => {
+					ctx.fillStyle = p.color || '#0FF';
+					ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+				});
+
+				// Render UI
+				ctx.fillStyle = '#FAFAFA';
+				ctx.font = '20px Helvetica, Arial, sans-serif';
+				ctx.textAlign = 'left';
+				ctx.textBaseline = 'top';
+				ctx.fillText(`Score: ${this.state.score}`, 20, 30);
+				ctx.fillText(`Level: ${this.state.level}`, 20, 60);
+			}
+
+			focus() {
+				c.focus();
+			}
+		}
+
+		class Joystick {
+			constructor() {
+				this.element = document.getElementById('joystick');
+				this.joystick = null;
+			}
+			init() {
+				if (!this.element) return;
+				this.joystick = nipplejs.create({
+					zone: this.element,
+					mode: 'static',
+					position: {
+						left: '50%',
+						bottom: '20%'
+					},
+					size: 100,
+					color: 'blue',
+				});
+				this.joystick.on('move', (event, data) => {
+					if (data.direction) {
+						const direction = data.direction.angle;
+						if (direction === 'left') keyMap |= keys['65'];
+						else if (direction === 'right') keyMap |= keys['68'];
+						else if (direction === 'up') keyMap |= keys['87'];
+						else if (direction === 'down') keyMap |= keys['83'];
+					}
+				});
+				this.joystick.on('end', () => {
+					keyMap = 0;
+				});
+			}
+		}
+	</script>
+
+	<!-- Test Code -->
+	<script>
+		QUnit.module('GeoWar Game', {
+			beforeEach: function () {
+				// Reset state before each test
+				keyMap = 0;
+				coords = [0, 0, 0, 0];
+				const c = document.getElementById('game');
+				if (c) {
+					c.width = window.innerWidth;
+					c.height = window.innerHeight;
+				}
+			}
+		});
+
+		QUnit.test('GeoWar class constructor', function (assert) {
+			const game = new GeoWar();
+			assert.strictEqual(game.state.time, 0, 'Initial time should be 0');
+			assert.strictEqual(game.state.score, 0, 'Initial score should be 0');
+			assert.strictEqual(game.state.level, 1, 'Initial level should be 1');
+			assert.deepEqual(game.state.enemies, [], 'Initial enemies should be an empty array');
+			assert.deepEqual(game.state.projectiles, [], 'Initial projectiles should be an empty array');
+			assert.deepEqual(game.state.powerUps, [], 'Initial powerUps should be an empty array');
+			assert.ok(game.state.audioCtx instanceof (window.AudioContext || window.webkitAudioContext), 'AudioContext should be created');
+		});
+
+		QUnit.test('GeoWar focus method', function (assert) {
+			const game = new GeoWar();
+			const canvas = document.getElementById('game');
+			game.focus();
+			assert.strictEqual(document.activeElement, canvas, 'Canvas should be focused');
+		});
+
+		QUnit.test('Keyboard input handling', function (assert) {
+			const canvas = document.getElementById('game');
+
+			// Test keydown
+			let event = new KeyboardEvent('keydown', {
+				'keyCode': 65
+			});
+			canvas.dispatchEvent(event);
+			assert.strictEqual(keyMap, 1, 'KeyMap should be 1 after A down');
+
+			event = new KeyboardEvent('keydown', {
+				'keyCode': 87
+			});
+			canvas.dispatchEvent(event);
+			assert.strictEqual(keyMap, 5, 'KeyMap should be 5 after W down');
+
+			// Test keyup
+			event = new KeyboardEvent('keyup', {
+				'keyCode': 65
+			});
+			canvas.dispatchEvent(event);
+			assert.strictEqual(keyMap, 4, 'KeyMap should be 4 after A up');
+
+			event = new KeyboardEvent('keyup', {
+				'keyCode': 87
+			});
+			canvas.dispatchEvent(event);
+			assert.strictEqual(keyMap, 0, 'KeyMap should be 0 after W up');
+		});
+
+		QUnit.test('Mouse move handling', function (assert) {
+			const canvas = document.getElementById('game');
+			const x = 100;
+			const y = 150;
+
+			const event = new MouseEvent('mousemove', {
+				clientX: x,
+				clientY: y
+			});
+			canvas.dispatchEvent(event);
+
+			assert.strictEqual(coords[0], x * window.innerWidth / canvas.offsetWidth, 'coords[0] should be updated on mousemove');
+			assert.strictEqual(coords[1], y * window.innerHeight / canvas.offsetHeight, 'coords[1] should be updated on mousemove');
+		});
+
+		QUnit.test('Touch input handling', function (assert) {
+			const canvas = document.getElementById('game');
+
+			// Single touch
+			let touch = new Touch({
+				identifier: Date.now(),
+				target: canvas,
+				clientX: 50,
+				clientY: 50
+			});
+			let event = new TouchEvent('touchstart', {
+				touches: [touch],
+				targetTouches: [touch],
+				changedTouches: [touch]
+			});
+			canvas.dispatchEvent(event);
+			assert.strictEqual(coords[2], 1, 'Touch should be active on touchstart');
+			assert.strictEqual(coords[3], 0, 'Should be single touch');
+
+			// Multi touch
+			let touch2 = new Touch({
+				identifier: Date.now() + 1,
+				target: canvas,
+				clientX: 100,
+				clientY: 100
+			});
+			event = new TouchEvent('touchstart', {
+				touches: [touch, touch2],
+				targetTouches: [touch, touch2],
+				changedTouches: [touch2]
+			});
+			canvas.dispatchEvent(event);
+			assert.strictEqual(coords[3], 1, 'Should be multi-touch');
+
+			// Touch end
+			event = new TouchEvent('touchend', {
+				changedTouches: [touch]
+			});
+			canvas.dispatchEvent(event);
+			assert.strictEqual(coords[2], 0, 'Touch should be inactive on touchend');
+		});
+
+		QUnit.test('Joystick class', function (assert) {
+			const joystick = new Joystick();
+			assert.ok(joystick.element, 'Joystick element should be found');
+			joystick.init();
+			assert.ok(joystick.joystick, 'nipplejs instance should be created');
+			joystick.joystick.destroy(); // clean up
+		});
+	</script>
+</body>
+</html>

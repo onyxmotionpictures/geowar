@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Geo War</title>
+	<style>
+		body {
+			margin: 0;
+			overflow: hidden;
+			background: #050505;
+		}
+
+		canvas {
+			display: block;
+		}
+
+		#joystick {
+			position: absolute;
+			left: 20px;
+			bottom: 20px;
+			width: 100px;
+			height: 100px;
+		}
+	</style>
+	<script src="https://cdn.jsdelivr.net/npm/nipplejs@0.10.0/dist/nipplejs.min.js"></script>
+</head>
+
+<body>
+	<canvas id="game"></canvas>
+	<div id="joystick"></div>
+	<script>
+		// Game and joystick code goes here
+		let saveData = {}; // Declare saveData at the top level so it's accessible everywhere
+
+		const keys = {
+			'65': 1, // A
+			'68': 2, // D
+			'87': 4, // W
+			'83': 8, // S
+			'32': 16, // Space
+			'27': 32, // Escape
+		};
+		let keyMap = 0;
+		let coords = [0, 0, 0, 0];
+		const FW = window.innerWidth;
+		const FH = window.innerHeight;
+		const c = document.getElementById('game');
+		c.width = FW;
+		c.height = FH;
+		c.tabIndex = 1; // Make canvas focusable for keyboard events
+		c.addEventListener('keydown', (e) => {
+			if (keys[String(e.keyCode)]) {
+				keyMap |= keys[String(e.keyCode)];
+			}
+		});
+		c.addEventListener('keyup', (e) => {
+			if (keys[String(e.keyCode)]) {
+				keyMap &= ~keys[String(e.keyCode)];
+			}
+		});
+		c.addEventListener('mousemove', (e) => {
+			coords[0] = e.clientX * FW / c.offsetWidth;
+			coords[1] = e.clientY * FH / c.offsetHeight;
+		});
+		c.addEventListener('touchmove', (e) => {
+			const touch = e.touches[0];
+			coords[0] = touch.clientX * FW / c.offsetWidth;
+			coords[1] = touch.clientY * FH / c.offsetHeight;
+			e.preventDefault();
+		});
+		c.addEventListener('touchstart', (e) => {
+			if (e.touches.length > 1) {
+				coords[3] = 1; // Multi-touch
+			} else {
+				coords[3] = 0; // Single touch
+			}
+			coords[2] = 1; // Touch active
+		});
+		c.addEventListener('touchend', (e) => {
+			coords[2] = 0; // Touch inactive
+		});
+		c.addEventListener('touchcancel', (e) => {
+			coords[2] = 0; // Touch cancelled
+		});
+		const ctx = c.getContext('2d');
+		ctx.imageSmoothingEnabled = false;
+		ctx.webkitImageSmoothingEnabled = false;
+		ctx.mozImageSmoothingEnabled = false;
+		ctx.oImageSmoothingEnabled = false;
+		ctx.msImageSmoothingEnabled = false;
+		ctx.fillStyle = '#050505';
+		ctx.fillRect(0, 0, FW, FH);
+		ctx.font = '12px Helvetica, Arial, sans-serif';
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.lineWidth = 2;
+		ctx.strokeStyle = '#FAFAFA';
+		ctx.fillStyle = '#FAFAFA';
+		ctx.clearRect(0, 0, FW, FH);
+		ctx.fillStyle = '#050505';
+		ctx.fillRect(0, 0, FW, FH);
+
+		// Example GeoWar class stub
+		/**
+		 * GeoWar game class.
+		 * Manages game state, rendering, and updates.
+		 */
+		class GeoWar {
+			/**
+			 * Constructs a new GeoWar instance.
+			 * Initializes state, context, and triggers.
+			 */
+			constructor() {
+				/**
+				 * @property {Object} state - The game state object.
+				 * @property {number} state.time - Current game time.
+				 * @property {number} state.score - Player's score.
+				 * @property {number} state.level - Current game level.
+				 * @property {Array} state.enemies - List of enemies.
+				 * @property {Array} state.projectiles - List of projectiles.
+				 * @property {Array} state.powerUps - List of power-ups.
+				 * @property {Array} state.viewPort - Viewport coordinates.
+				 * @property {AudioContext} state.audioCtx - Audio context for sound.
+				 * @property {Object} state.sequences - Game sequences.
+				 * @property {Object} state.triggers - Game triggers.
+				 * @property {Array} state.times - Trigger times.
+				 */
+				this.state = {
+					time: 0,
+					score: 0,
+					level: 1,
+					enemies: [],
+					projectiles: [],
+					powerUps: [],
+					viewPort: [0, 0],
+					audioCtx: new (window.AudioContext || window.webkitAudioContext)(),
+					sequences: {
+						sequence1: [],
+						sequence2: [],
+						sequence3: [],
+						sequence4: [],
+					},
+				};
+			}
+
+			/**
+			saveGame() {
+			  // Example: Save state to localStorage
+			  localStorage.setItem('geoWarSave', JSON.stringify(this.state));
+			}
+	  
+			/**
+			 * Updates the game state.
+			 */
+			update() {
+				// Game update logic goes here
+			}
+
+			/**
+			 * Renders the game.
+			 */
+			render() {
+				ctx.clearRect(0, 0, FW, FH);
+				ctx.fillStyle = '#050505';
+				ctx.fillRect(0, 0, FW, FH);
+
+				// Render projectiles
+				this.state.projectiles.forEach(p => {
+					ctx.fillStyle = p.color || '#FFF';
+					ctx.beginPath();
+					ctx.arc(p.x, p.y, p.radius, 0, 2 * Math.PI);
+					ctx.fill();
+				});
+
+				// Render enemies
+				this.state.enemies.forEach(e => {
+					ctx.strokeStyle = e.color || '#F00';
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					ctx.arc(e.x, e.y, e.radius, 0, 2 * Math.PI);
+					ctx.stroke();
+				});
+
+				// Render power-ups
+				this.state.powerUps.forEach(p => {
+					ctx.fillStyle = p.color || '#0FF';
+					ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+				});
+
+				// Render UI
+				ctx.fillStyle = '#FAFAFA';
+				ctx.font = '20px Helvetica, Arial, sans-serif';
+				ctx.textAlign = 'left';
+				ctx.textBaseline = 'top';
+				ctx.fillText(`Score: ${this.state.score}`, 20, 30);
+				ctx.fillText(`Level: ${this.state.level}`, 20, 60);
+			}
+
+			focus() {
+				c.focus();
+			}
+		}
+
+		class Joystick {
+			constructor() {
+				this.element = document.getElementById('joystick');
+				this.joystick = null;
+			}
+			init() {
+				if (!this.element) return;
+				this.joystick = nipplejs.create({
+					zone: this.element,
+					mode: 'static',
+					position: { left: '50%', bottom: '20%' },
+					size: 100,
+					color: 'blue',
+				});
+				this.joystick.on('move', (event, data) => {
+					if (data.direction) {
+						const direction = data.direction.angle;
+						if (direction === 'left') keyMap |= keys['65'];
+						else if (direction === 'right') keyMap |= keys['68'];
+						else if (direction === 'up') keyMap |= keys['87'];
+						else if (direction === 'down') keyMap |= keys['83'];
+					}
+				});
+				this.joystick.on('end', () => {
+					keyMap = 0;
+				});
+			}
+		}
+
+		window.addEventListener('DOMContentLoaded', () => {
+			const game = new GeoWar();
+			const joystick = new Joystick();
+			joystick.init();
+			game.focus();
+
+			function gameLoop() {
+				game.update();
+				game.render();
+				requestAnimationFrame(gameLoop);
+			}
+			gameLoop();
+		});
+	</script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Geo War</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #050505;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #joystick {
+            position: fixed;
+            bottom: 25px;
+            left: 25px;
+            width: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="game"></canvas>
+    <div id="joystick"></div>
+
+    <script>
+        var Stats = function () { function h(a) { c.appendChild(a.dom); return a } function k(a) { for (var d = 0; d < c.children.length; d++)c.children[d].style.display = d === a ? "block" : "none"; l = a } var l = 0, c = document.createElement("div"); c.style.cssText = "position:fixed;top:0;left:0;cursor:pointer;opacity:0.9;z-index:10000"; c.addEventListener("click", function (a) { a.preventDefault(); k(++l % c.children.length) }, !1); var g = (performance || Date).now(), e = g, a = 0, r = h(new Stats.Panel("FPS", "#0ff", "#002")), f = h(new Stats.Panel("MS", "#0f0", "#020")); if (self.performance && self.performance.memory) var t = h(new Stats.Panel("MB", "#f08", "#201")); k(0); return { REVISION: 16, dom: c, addPanel: h, showPanel: k, begin: function () { g = (performance || Date).now() }, end: function () { a++; var c = (performance || Date).now(); f.update(c - g, 200); if (c > e + 1E3 && (r.update(1E3 * a / (c - e), 100), e = c, a = 0, t)) { var d = performance.memory; t.update(d.usedJSHeapSize / 1048576, d.jsHeapSizeLimit / 1048576) } return c }, update: function () { g = this.end() }, domElement: c, setMode: k } }; Stats.Panel = function (h, k, l) { var c = Infinity, g = 0, e = Math.round, a = e(window.devicePixelRatio || 1), r = 80 * a, f = 48 * a, t = 3 * a, u = 2 * a, d = 3 * a, m = 15 * a, n = 74 * a, p = 30 * a, q = document.createElement("canvas"); q.width = r; q.height = f; q.style.cssText = "width:80px;height:48px"; var b = q.getContext("2d"); b.font = "bold " + 9 * a + "px Helvetica,Arial,sans-serif"; b.textBaseline = "top"; b.fillStyle = l; b.fillRect(0, 0, r, f); b.fillStyle = k; b.fillText(h, t, u); b.fillRect(d, m, n, p); b.fillStyle = l; b.globalAlpha = .9; b.fillRect(d, m, n, p); return { dom: q, update: function (f, v) { c = Math.min(c, f); g = Math.max(g, f); b.fillStyle = l; b.globalAlpha = 1; b.fillRect(0, 0, r, m); b.fillStyle = k; b.fillText(e(f) + " " + h + " (" + e(c) + "-" + e(g) + ")", t, u); b.drawImage(q, d + a, m, n - a, p, d, m, n - a, p); b.fillRect(d + n - a, m, a, p); b.fillStyle = l; b.globalAlpha = .9; b.fillRect(d + n - a, m, a, e((1 - f / v) * p)) } } }; "object" === typeof module && (module.exports = Stats);
+
+        const STATIC_VERT = 'attribute vec2 p;\nvarying vec2 uv;\n\nvoid main() {\n  gl_Position = vec4(p,.0,1.);\n  uv = .5 * (p+1.);\n}\n';
+
+        const GLOW_FRAG = 'precision highp float;\nuniform vec2 dim;\nuniform sampler2D tex;\nvarying vec2 uv;\nuniform float time;\nuniform vec3 colors;\n\nvoid main (){ \n   vec2 pos = uv * dim;\n   vec4 col = texture2D(tex, uv);\n   vec4 gws = vec4(.0);\n   float rand = .02*sin(time)+.3;\n   float weight = .03;\n   \n   vec4 col_r = texture2D(tex, uv + vec2((-15. / dim.x) * rand, 0));\n   //glow\n   for (int i = 0; i <9; i++) {\n     float miw = float(mod(float(i), 4.));\n     float idw = float(i / 3);\n     vec2 v1 = vec2(pos.x + miw, pos.y + idw);\n     vec2 v2 = vec2(pos.x - miw, pos.y + idw);\n     vec2 v3 = vec2(pos.x + miw, pos.y - idw);\n     vec2 v4 = vec2(pos.x - miw, pos.y - idw);\n     gws += texture2D(tex, v1 / dim) * weight;\n     gws += texture2D(tex, v2 / dim) * weight;\n     gws += texture2D(tex, v3 / dim) * weight;\n     gws += texture2D(tex, v4 / dim) * weight;\n   }\n   col += gws;\n   // chromatic distorsion \n   vec4 col_l = texture2D(tex, uv + vec2((8. / dim.x) * rand, 0));\n   vec4 col_g = texture2D(tex, uv + vec2((-7.5 / dim.x) * rand, 0));\n   float val = max(1., sin(uv.y * dim.y * 1.2) * 2.5) * rand;\n   col.r = col.r + col_l.r * val;\n   col.b = col.b + col_r.b * val;\n   col.g = col.g + col_g.g * val;\n\n   // Noise color using random number\n   vec2 pos2 = uv*sin(time);\n   float r = fract(sin(dot(pos2.xy ,vec2(12.,78.))) * 43758.);\n   vec3 noise = vec3(r);\n   col.rgb = mix(col.rgb, noise, .015);\n\n\n\n   gl_FragColor.rgba = col;\n}\n';
+
+        class SfxrParams {
+            ss(values) {
+                for (let i = 0; i < 24; i++) {
+                    this[String.fromCharCode(97 + i)] = values[i] || 0;
+                }
+
+                if (this['c'] < .01) {
+                    this['c'] = .01;
+                }
+
+                const totalTime = this['b'] + this['c'] + this['e'];
+                if (totalTime < 0.18) {
+                    const multiplier = .18 / totalTime;
+                    this['b'] *= multiplier;
+                    this['c'] *= multiplier;
+                    this['e'] *= multiplier;
+                }
+            }
+        }
+
+        class SfxrSynth {
+            constructor() {
+                this._p = new SfxrParams();
+                // ... (rest of SfxrSynth code)
+            }
+
+            // ... (rest of SfxrSynth methods)
+        }
+
+        const CONFIG = {
+            DEBUG: false,
+            WIDTH: 1920,
+            HEIGHT: 1080,
+            TILE_SIZE: 50,
+            GRID_SIZE: 25,
+            COLORS: [
+                'rgb(255,255,255)',
+                'rgba(40,77,153,0.6)',
+                // ... (rest of colors)
+            ]
+        };
+
+        class GeoWar {
+            constructor() {
+                this.state = {
+                    // ... (state properties)
+                    triggers: {},
+                    // ... (rest of state)
+                };
+                this.init();
+            }
+
+            init() {
+                // ... (initialization code)
+                this.initTriggers();
+            }
+
+            initTriggers() {
+                this.state.triggers = {
+                    500: [1, this.state.sequences.sequence4],
+                    // ... (rest of triggers)
+                };
+            }
+
+            getHashKey(x, y) {
+                return `${Math.round(x / (CONFIG.TILE_SIZE / 2))}-${Math.round(y / (CONFIG.TILE_SIZE / 2))}`;
+            }
+
+            collideElements(item) {
+                const nearby = this.getNearbyItems(item.x, item.y);
+                return nearby.find(e =>
+                    Math.hypot(e.x - item.x, e.y - item.y) < e.radius + item.radius
+                );
+            }
+
+            getNearbyItems(x, y) {
+                // ... (spatial hash lookup)
+            }
+
+            updateEnemy(enemy, index) {
+                if (enemy.type === 2) {
+                    enemy.angle = this.getAngle(enemy, bigKiller || [0, 0]);
+                    if (Math.abs(enemy.x - prevX) < 0.1 && Math.abs(enemy.y - prevY) < 0.1) {
+                        enemy.x += (Math.random() - 0.5) * 0.5;
+                        enemy.y += (Math.random() - 0.5) * 0.5;
+                    }
+                }
+                // ... (rest of update)
+            }
+
+            setupEventListeners() {
+                // ... (existing listeners)
+                this.canvas.addEventListener('touchmove', e => {
+                    const touch = e.touches[0];
+                    coords[0] = touch.clientX * CONFIG.WIDTH / window.innerWidth;
+                    coords[1] = touch.clientY * CONFIG.HEIGHT / window.innerHeight;
+                });
+
+                const joystick = nipplejs.create({ zone: document.getElementById('joystick') });
+                joystick.on('move', (e, data) => {
+                });
+            }
+
+            saveGame() {
+                const saveData = {
+                    hero: { ...this.state.ship },
+                    score: this.state.score,
+                    // ... (other critical state)
+                };
+                localStorage.setItem('geowar-save', JSON.stringify(saveData));
+            }
+
+            loadGame() {
+                const saveData = JSON.parse(localStorage.getItem('geowar-save'));
+                if (saveData) {
+                    this.state.ship = saveData.hero;
+                    // ... (restore other state)
+                }
+            }
+
+            draw() {
+                this.ctx.save();
+                this.state.enemies.forEach(e => {
+                    if (e.type < 5) this.drawBasicEnemy(e);
+                    else this.drawAdvancedEnemy(e);
+                });
+                this.ctx.restore();
+            }
+        }
+
+        const game = new GeoWar();
+    </script>
+</body>
+
+</html>
